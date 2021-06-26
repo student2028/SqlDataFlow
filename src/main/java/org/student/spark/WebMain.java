@@ -1,10 +1,7 @@
 package org.student.spark;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import org.student.spark.common.CommonUtils;
-import org.student.spark.common.Constants;
-import org.student.spark.common.DataFlowException;
-import org.student.spark.common.JsonUtils;
+import org.student.spark.common.*;
 import org.student.spark.sql.SQL2HOCONDriver;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -98,9 +95,20 @@ public class WebMain {
                 .addExactPath("/sparksql", sparksqlHandler(spark))
                 .addExactPath("/rundf", rundfHandler(spark))
                 .addExactPath("/log", logPodWSHandler())
-                .addExactPath("/stopquery", stopQueryHandler(spark));
+                .addExactPath("/stopquery", stopQueryHandler(spark))
+                .addExactPath("/sparkshell", sparkShellHandler(spark));
+
     }
 
+    private static HttpHandler sparkShellHandler(SparkSession spark) {
+
+        return baseHandler((exchange, paras) -> {
+            String sql = paras.get(SQLQUERY).toString();
+            String data = SparkRepl.interpret(sql);
+            Dataset<Row> df = spark.range(1).withColumn("data", org.apache.spark.sql.functions.lit(data));
+            jsonRender(exchange, getResponseJsonFromDataFrame(df, "1"));
+        });
+    }
 
     static void logLocalLog(WebSocketChannel channel) {
         PipedReader reader;
